@@ -1,6 +1,3 @@
-import { promises as fs } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import type { 
   AudioSession, 
   AudioFormat, 
@@ -9,26 +6,13 @@ import type {
   generateFilename,
   CONSTANTS
 } from '@audio-tab-capture/shared';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import { AudioSessionModel, type AudioSessionDocument } from '../database/models.js';
 
 export class AudioProcessor {
-  private sessions = new Map<string, AudioSession>();
   private audioChunks = new Map<string, Map<number, ArrayBuffer>>();
-  private storageDir: string;
 
   constructor() {
-    this.storageDir = join(__dirname, '../../storage');
-    this.initializeStorage();
-  }
-
-  private async initializeStorage(): Promise<void> {
-    try {
-      await fs.mkdir(this.storageDir, { recursive: true });
-    } catch (error) {
-      console.error('Failed to initialize storage directory:', error);
-    }
+    // No need for storage directory initialization with MongoDB
   }
 
   async startSession(
@@ -46,7 +30,10 @@ export class AudioProcessor {
       audioFormat,
     };
 
-    this.sessions.set(sessionId, session);
+    // Create session in MongoDB
+    const sessionDoc = new AudioSessionModel(session);
+    await sessionDoc.save();
+
     this.audioChunks.set(sessionId, new Map());
 
     console.log(`Started audio session ${sessionId} for tab ${tabId}: ${tabTitle}`);
@@ -54,41 +41,47 @@ export class AudioProcessor {
   }
 
   async stopSession(sessionId: string): Promise<AudioSession> {
-    const session = this.sessions.get(sessionId);
-    if (!session) {
+    const sessionDoc = await AudioSessionModel.findBySessionId(sessionId);
+    if (!sessionDoc) {
       throw new Error(`Session ${sessionId} not found`);
     }
 
-    session.status = 'stopped';
-    session.endTime = new Date();
+    sessionDoc.status = 'stopped';
+    sessionDoc.endTime = new Date();
 
-    // Process and save audio file
+    // Process and save audio file as blob
     await this.finalizeAudioFile(sessionId);
 
+    await sessionDoc.save();
+
     console.log(`Stopped audio session ${sessionId}`);
-    return session;
+    return sessionDoc.toAudioSession();
   }
 
   async pauseSession(sessionId: string): Promise<AudioSession> {
-    const session = this.sessions.get(sessionId);
-    if (!session) {
+    const sessionDoc = await AudioSessionModel.findBySessionId(sessionId);
+    if (!sessionDoc) {
       throw new Error(`Session ${sessionId} not found`);
     }
 
-    session.status = 'paused';
+    sessionDoc.status = 'paused';
+    await sessionDoc.save();
+
     console.log(`Paused audio session ${sessionId}`);
-    return session;
+    return sessionDoc.toAudioSession();
   }
 
   async resumeSession(sessionId: string): Promise<AudioSession> {
-    const session = this.sessions.get(sessionId);
-    if (!session) {
+    const sessionDoc = await AudioSessionModel.findBySessionId(sessionId);
+    if (!sessionDoc) {
       throw new Error(`Session ${sessionId} not found`);
     }
 
-    session.status = 'recording';
+    sessionDoc.status = 'recording';
+    await sessionDoc.save();
+
     console.log(`Resumed audio session ${sessionId}`);
-    return session;
+    return sessionDoc.toAudioSession();
   }
 
   async processAudioChunk(chunk: AudioChunk): Promise<void> {
@@ -106,18 +99,14 @@ export class AudioProcessor {
   }
 
   private async finalizeAudioFile(sessionId: string): Promise<void> {
-    const session = this.sessions.get(sessionId);
+    const sessionDoc = await AudioSessionModel.findBySessionId(sessionId);
     const chunks = this.audioChunks.get(sessionId);
     
-    if (!session || !chunks) {
+    if (!sessionDoc || !chunks) {
       throw new Error(`Session ${sessionId} not found`);
     }
 
     try {
-      const { generateFilename } = await import('@audio-tab-capture/shared');
-      const filename = generateFilename(session.tabTitle, session.audioFormat.codec);
-      const filePath = join(this.storageDir, filename);
-
       // Sort chunks by sequence number and combine
       const sortedChunks = Array.from(chunks.entries())
         .sort(([a], [b]) => a - b)
@@ -140,61 +129,49 @@ export class AudioProcessor {
         offset += chunk.byteLength;
       }
 
-      // Write to file
-      await fs.writeFile(filePath, combinedBuffer);
+      // Store binary data in MongoDB
+      sessionDoc.audioData = Buffer.from(combinedBuffer);
+      await sessionDoc.save();
 
-      // Store filename in session
-      (session as AudioSession & { filename?: string }).filename = filename;
-
-      console.log(`Saved audio file: ${filename} (${totalSize} bytes)`);
+      console.log(`Saved audio data to MongoDB: ${sessionId} (${totalSize} bytes)`);
     } catch (error) {
-      session.status = 'error';
+      sessionDoc.status = 'error';
+      await sessionDoc.save();
       console.error(`Failed to finalize audio file for session ${sessionId}:`, error);
       throw error;
     }
   }
 
   async getSession(sessionId: string): Promise<AudioSession | undefined> {
-    return this.sessions.get(sessionId);
+    const sessionDoc = await AudioSessionModel.findBySessionId(sessionId);
+    return sessionDoc?.toAudioSession();
   }
 
   async getAllSessions(): Promise<AudioSession[]> {
-    return Array.from(this.sessions.values());
+    const sessionDocs = await AudioSessionModel.find().sort({ startTime: -1 });
+    return sessionDocs.map(doc => doc.toAudioSession());
   }
 
   async getDownloadInfo(sessionId: string): Promise<DownloadInfo | undefined> {
-    const session = this.sessions.get(sessionId);
-    if (!session || session.status !== 'stopped') {
+    const sessionDoc = await AudioSessionModel.findBySessionId(sessionId);
+    if (!sessionDoc || sessionDoc.status !== 'stopped' || !sessionDoc.audioData) {
       return undefined;
     }
 
-    const filename = (session as AudioSession & { filename?: string }).filename;
-    if (!filename) {
-      return undefined;
-    }
+    const { generateFilename } = await import('@audio-tab-capture/shared');
+    const filename = generateFilename(sessionDoc.tabTitle, sessionDoc.audioFormat.codec);
 
-    const filePath = join(this.storageDir, filename);
-    try {
-      const stats = await fs.stat(filePath);
-      return {
-        sessionId,
-        filename,
-        fileSize: stats.size,
-        downloadUrl: `/api/files/${filename}`,
-      };
-    } catch {
-      return undefined;
-    }
+    return {
+      sessionId,
+      filename,
+      fileSize: sessionDoc.audioData.length,
+      downloadUrl: `/api/files/${sessionId}`,
+    };
   }
 
-  async getFilePath(filename: string): Promise<string | undefined> {
-    const filePath = join(this.storageDir, filename);
-    try {
-      await fs.access(filePath);
-      return filePath;
-    } catch {
-      return undefined;
-    }
+  async getAudioData(sessionId: string): Promise<Buffer | undefined> {
+    const sessionDoc = await AudioSessionModel.findBySessionId(sessionId);
+    return sessionDoc?.audioData;
   }
 
   async getSessionFileSize(sessionId: string): Promise<number> {
@@ -210,24 +187,15 @@ export class AudioProcessor {
   }
 
   async deleteSession(sessionId: string): Promise<boolean> {
-    const session = this.sessions.get(sessionId);
-    if (!session) {
+    const sessionDoc = await AudioSessionModel.findBySessionId(sessionId);
+    if (!sessionDoc) {
       return false;
     }
 
-    // Delete audio file if it exists
-    const filename = (session as AudioSession & { filename?: string }).filename;
-    if (filename) {
-      const filePath = join(this.storageDir, filename);
-      try {
-        await fs.unlink(filePath);
-      } catch (error) {
-        console.error(`Failed to delete file ${filename}:`, error);
-      }
-    }
+    // Delete from database
+    await AudioSessionModel.deleteOne({ id: sessionId });
 
     // Clean up memory
-    this.sessions.delete(sessionId);
     this.audioChunks.delete(sessionId);
 
     console.log(`Deleted session ${sessionId}`);

@@ -25,7 +25,8 @@ audio-tab-capture/
 
 ### Technology Stack
 - **Frontend**: Chrome Extension API, Web Audio API, WebSocket
-- **Backend**: Express.js, WebSocket (ws), TypeScript
+- **Backend**: Express.js, WebSocket (ws), TypeScript, MongoDB
+- **Database**: MongoDB with Mongoose ODM for BLOB storage
 - **Build**: Vite, TypeScript, ESLint, Prettier
 - **Development**: Concurrently, Hot reload
 
@@ -35,6 +36,7 @@ audio-tab-capture/
 - Node.js 18+ 
 - npm 9+
 - Chrome browser
+- MongoDB 5.0+ (local installation or cloud service like MongoDB Atlas)
 
 ### Installation
 
@@ -45,12 +47,36 @@ audio-tab-capture/
    npm install
    ```
 
-2. **Build all packages**:
+2. **Setup MongoDB**:
+   ```bash
+   # Option 1: Local MongoDB
+   # Install MongoDB Community Edition from https://www.mongodb.com/try/download/community
+   # Start MongoDB service
+   sudo systemctl start mongod  # Linux
+   brew services start mongodb-community@7.0  # macOS
+   
+   # Option 2: MongoDB Atlas (Cloud)
+   # Create account at https://cloud.mongodb.com
+   # Create cluster and get connection string
+   ```
+
+3. **Configure environment**:
+   ```bash
+   # Copy environment template
+   cp backend/.env.example backend/.env
+   
+   # Edit backend/.env with your MongoDB connection:
+   # MONGODB_URI=mongodb://localhost:27017/audio-tab-capture
+   # or
+   # MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/audio-tab-capture
+   ```
+
+4. **Build all packages**:
    ```bash
    npm run build
    ```
 
-3. **Start development servers**:
+5. **Start development servers**:
    ```bash
    npm run dev
    ```
@@ -178,8 +204,12 @@ npm run format:check
 │   ├── src/
 │   │   ├── server.ts          # Express server setup
 │   │   ├── websocket.ts       # WebSocket message handling
-│   │   └── audio/
-│   │       └── processor.ts   # Audio chunk processing
+│   │   ├── audio/
+│   │   │   └── processor.ts   # Audio chunk processing
+│   │   └── database/
+│   │       ├── config.ts      # MongoDB connection configuration
+│   │       └── models.ts      # Mongoose schemas and models
+│   ├── .env.example           # Environment variables template
 │   └── vite.config.ts
 ├── shared/
 │   └── src/
@@ -194,8 +224,8 @@ npm run format:check
 1. **Capture**: Extension uses `getDisplayMedia()` to capture tab audio
 2. **Chunking**: Audio split into 1-second chunks via MediaRecorder
 3. **Streaming**: Chunks sent to backend via WebSocket in real-time
-4. **Processing**: Backend reconstructs and saves complete audio file
-5. **Storage**: Files saved with metadata for later download
+4. **Processing**: Backend reconstructs complete audio data from chunks
+5. **Storage**: Audio data stored as BLOB in MongoDB with session metadata
 
 ## Configuration
 
@@ -204,6 +234,7 @@ npm run format:check
 Backend supports these environment variables:
 - `PORT` - Server port (default: 3001)
 - `NODE_ENV` - Environment mode (development/production)
+- `MONGODB_URI` - MongoDB connection string (default: mongodb://localhost:27017/audio-tab-capture)
 
 ### Extension Permissions
 
@@ -232,7 +263,13 @@ Required Chrome permissions:
    - Check firewall settings
    - Verify port 3001 is accessible
 
-4. **Build errors**:
+4. **Database connection issues**:
+   - Verify MongoDB is running (local) or accessible (cloud)
+   - Check MONGODB_URI in backend/.env file
+   - Ensure database permissions are correct
+   - For MongoDB Atlas, check IP whitelist and credentials
+
+5. **Build errors**:
    - Run `npm install` to ensure dependencies
    - Clear node_modules and reinstall if needed
    - Check Node.js version (18+ required)

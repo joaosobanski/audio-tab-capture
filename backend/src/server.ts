@@ -4,11 +4,15 @@ import helmet from 'helmet';
 import { createServer } from 'http';
 import { setupWebSocket } from './websocket.js';
 import { AudioProcessor } from './audio/processor.js';
+import { connectToDatabase } from './database/config.js';
 import type { ApiResponse, SessionListResponse, DownloadInfo } from '@audio-tab-capture/shared';
 
 const app = express();
 const server = createServer(app);
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3001;
+
+// Initialize database connection
+await connectToDatabase();
 
 // Initialize audio processor
 const audioProcessor = new AudioProcessor();
@@ -63,13 +67,13 @@ app.get('/api/sessions/:sessionId', async (req, res) => {
       success: true,
       data: session,
     };
-    res.json(response);
+    return res.json(response);
   } catch (error) {
     const response: ApiResponse = {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     };
-    res.status(500).json(response);
+    return res.status(500).json(response);
   }
 });
 
@@ -89,27 +93,49 @@ app.get('/api/sessions/:sessionId/download', async (req, res) => {
       success: true,
       data: downloadInfo,
     };
-    res.json(response);
+    return res.json(response);
   } catch (error) {
     const response: ApiResponse = {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     };
-    res.status(500).json(response);
+    return res.status(500).json(response);
   }
 });
 
-// Serve audio files
-app.get('/api/files/:filename', async (req, res) => {
+// Serve audio files from MongoDB
+app.get('/api/files/:sessionId', async (req, res) => {
   try {
-    const filePath = await audioProcessor.getFilePath(req.params.filename);
-    if (!filePath) {
+    const audioData = await audioProcessor.getAudioData(req.params.sessionId);
+    if (!audioData) {
       return res.status(404).json({ error: 'File not found' });
     }
     
-    res.download(filePath);
+    const session = await audioProcessor.getSession(req.params.sessionId);
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    const { generateFilename } = await import('@audio-tab-capture/shared');
+    const filename = generateFilename(session.tabTitle, session.audioFormat.codec);
+    
+    // Set appropriate content type
+    let contentType = 'application/octet-stream';
+    if (session.audioFormat.codec === 'webm') {
+      contentType = 'audio/webm';
+    } else if (session.audioFormat.codec === 'wav') {
+      contentType = 'audio/wav';
+    } else if (session.audioFormat.codec === 'mp3') {
+      contentType = 'audio/mpeg';
+    }
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', audioData.length);
+    
+    return res.send(audioData);
   } catch (error) {
-    res.status(500).json({ 
+    return res.status(500).json({ 
       error: error instanceof Error ? error.message : 'Unknown error' 
     });
   }
@@ -130,13 +156,13 @@ app.delete('/api/sessions/:sessionId', async (req, res) => {
     const response: ApiResponse = {
       success: true,
     };
-    res.json(response);
+    return res.json(response);
   } catch (error) {
     const response: ApiResponse = {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
     };
-    res.status(500).json(response);
+    return res.status(500).json(response);
   }
 });
 

@@ -220,7 +220,7 @@ function sendError(ws: ExtendedWebSocket, code: keyof typeof ERROR_CODES, error:
   const message: ErrorMessage = {
     type: 'error',
     payload: {
-      sessionId: ws.sessionId,
+      ...(ws.sessionId && { sessionId: ws.sessionId }),
       error,
       code,
     },

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Tab Capture</title>
+  <style>
+    body {
+      width: 400px;
+      min-height: 500px;
+      margin: 0;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 20px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .status.connected {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+    }
+
+    .status.disconnected {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #dc2626;
+    }
+
+    .status.recording {
+      background: #fef3c7;
+      border: 1px solid #fde68a;
+      color: #d97706;
+    }
+
+    .status-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .tab-selector {
+      margin-bottom: 20px;
+    }
+
+    .tab-selector h3 {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .tab-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      background: white;
+    }
+
+    .tab-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-bottom: 1px solid #f3f4f6;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .tab-item:last-child {
+      border-bottom: none;
+    }
+
+    .tab-item:hover {
+      background: #f9fafb;
+    }
+
+    .tab-item.selected {
+      background: #eff6ff;
+      border-color: #dbeafe;
+    }
+
+    .tab-favicon {
+      width: 16px;
+      height: 16px;
+      border-radius: 2px;
+      background: #e5e7eb;
+    }
+
+    .tab-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tab-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #111827;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tab-url {
+      font-size: 11px;
+      color: #6b7280;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tab-audio-indicator {
+      width: 12px;
+      height: 12px;
+      background: #10b981;
+      border-radius: 50%;
+      opacity: 0.8;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #2563eb;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: #dc2626;
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #e2e8f0;
+    }
+
+    .settings {
+      margin-bottom: 20px;
+    }
+
+    .settings h3 {
+      margin: 0 0 12px 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .setting-group {
+      margin-bottom: 12px;
+    }
+
+    .setting-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #6b7280;
+      margin-bottom: 4px;
+    }
+
+    .setting-select {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      font-size: 13px;
+      background: white;
+    }
+
+    .info {
+      padding: 12px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      font-size: 12px;
+      color: #475569;
+      border-left: 3px solid #3b82f6;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6b7280;
+    }
+
+    .error {
+      padding: 12px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      color: #dc2626;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>Audio Tab Capture</h1>
+  </div>
+
+  <div id="connection-status" class="status disconnected">
+    <div class="status-indicator"></div>
+    <span>Disconnected from backend</span>
+  </div>
+
+  <div id="error-message" class="error" style="display: none;"></div>
+
+  <div class="tab-selector">
+    <h3>Select Tab to Record</h3>
+    <div id="tab-list" class="tab-list">
+      <div class="loading">Loading tabs...</div>
+    </div>
+  </div>
+
+  <div class="settings">
+    <h3>Recording Settings</h3>
+    <div class="setting-group">
+      <label class="setting-label">Quality</label>
+      <select id="quality-select" class="setting-select">
+        <option value="low">Low (64kbps)</option>
+        <option value="medium" selected>Medium (128kbps)</option>
+        <option value="high">High (256kbps)</option>
+      </select>
+    </div>
+    <div class="setting-group">
+      <label class="setting-label">Format</label>
+      <select id="format-select" class="setting-select">
+        <option value="webm-opus" selected>WebM (Opus)</option>
+        <option value="webm-vorbis">WebM (Vorbis)</option>
+        <option value="mp4-aac">MP4 (AAC)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="connect-btn" class="btn btn-secondary">Connect</button>
+    <button id="record-btn" class="btn btn-primary" disabled>Start Recording</button>
+    <button id="stop-btn" class="btn btn-danger" disabled>Stop</button>
+  </div>
+
+  <div class="info">
+    <strong>How to use:</strong><br>
+    1. Click "Connect" to connect to the backend<br>
+    2. Select a tab from the list above<br>
+    3. Choose your recording settings<br>
+    4. Click "Start Recording" to begin capturing audio
+  </div>
+
+  <script src="popup.iife.js"></script>
+</body>
+</html>

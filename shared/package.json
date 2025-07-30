@@ -1,0 +1,26 @@
+{
+  "name": "@audio-tab-capture/shared",
+  "version": "1.0.0",
+  "description": "Shared types and utilities for audio tab capture project",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  },
+  "keywords": [
+    "audio",
+    "types",
+    "shared",
+    "typescript"
+  ]
+}

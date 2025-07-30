@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+.DS_Store
+.env
+.env.local
+.env.production
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Extension build artifacts
+packages/extension/dist/
+packages/web/dist/
+packages/backend/dist/
+packages/backend/public/
+packages/shared/dist/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db

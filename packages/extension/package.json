@@ -1,0 +1,18 @@
+{
+  "name": "@audio-tab-capture/extension",
+  "version": "1.0.0",
+  "description": "Chrome extension for audio tab capture",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@audio-tab-capture/shared": "^1.0.0"
+  },
+  "devDependencies": {
+    "vite": "^4.4.0",
+    "typescript": "^5.1.6",
+    "@types/chrome": "^0.0.243"
+  }
+}

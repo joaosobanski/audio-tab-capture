@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Tab Capture</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="popup-header">
+      <h1>Audio Tab Capture</h1>
+      <div class="status-indicator" id="status"></div>
+    </header>
+
+    <main class="popup-content">
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading tabs...</p>
+      </div>
+
+      <div id="no-tabs" class="message" style="display: none;">
+        <p>No tabs with audio found</p>
+        <small>Open a tab with audio content and try again</small>
+      </div>
+
+      <div id="tabs-list" class="tabs-list" style="display: none;">
+        <h3>Tabs with Audio</h3>
+        <div id="tabs-container"></div>
+      </div>
+
+      <div id="capture-session" class="capture-session" style="display: none;">
+        <h3>Currently Capturing</h3>
+        <div class="session-info">
+          <div class="session-title" id="session-title"></div>
+          <div class="session-duration" id="session-duration">00:00</div>
+        </div>
+        <button id="stop-capture" class="btn btn-danger">Stop Capture</button>
+      </div>
+    </main>
+
+    <footer class="popup-footer">
+      <div class="server-status">
+        <span id="server-status">Checking connection...</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

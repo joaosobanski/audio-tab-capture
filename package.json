@@ -1,0 +1,28 @@
+{
+  "name": "audio-tab-capture",
+  "version": "1.0.0",
+  "description": "Sistema de captura de áudio de abas do navegador",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev": "npm run dev --workspaces --if-present",
+    "clean": "npm run clean --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "prettier --write \"packages/**/*.{ts,js,json,md}\"",
+    "backend:dev": "npm run dev -w packages/backend",
+    "extension:build": "npm run build -w packages/extension",
+    "web:dev": "npm run dev -w packages/web"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.1.6"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}

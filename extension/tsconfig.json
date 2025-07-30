@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "noEmit": false,
+    "types": ["chrome", "node"],
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": [
+    "src/**/*",
+    "manifest.json"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules"
+  ]
+}

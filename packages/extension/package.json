@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Chrome extension for audio tab capture",
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && cp manifest.json dist/ && cp src/popup/popup.html src/popup/popup.css dist/",
     "dev": "vite build --watch",
     "clean": "rm -rf dist"
   },

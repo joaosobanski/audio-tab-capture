@@ -5,7 +5,12 @@ export default defineConfig({
     outDir: '../backend/public',
     emptyOutDir: true,
     rollupOptions: {
-      input: './src/index.html'
+      input: './src/index.html',
+      output: {
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
+      }
     }
   },
   server: {
